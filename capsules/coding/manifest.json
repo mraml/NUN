@@ -1,0 +1,6 @@
+{
+  "name": "Coding Capsule",
+  "version": "1.0",
+  "triggers": ["bug", "fix", "debug", "refactor"],
+  "workflow": "./workflow.js"
+}
