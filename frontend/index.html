@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N.U.N. - Neural Utility Nexus</title>
+    <script src="https://cdn.tailwindcss.com"></script> 
+    <style>
+        /* --- AESTHETIC CONFIG (CSS Variables) --- */
+        :root {
+            --color-amber-primary: #ff8c00;
+            --color-amber-secondary: #ffaa33;
+            --color-amber-accent: #ff4500;
+            --color-green-accent: #00ff88;
+            --color-green-accent-hover: #00ffaa;
+            --color-purple-accent: #8a2be2;
+            --color-red-error: #ff0000;
+            
+            --color-bg-primary: #0a0a0a;
+            --color-bg-secondary: #1a0f00;
+            --color-bg-card: rgba(15, 10, 5, 0.9);
+            --color-bg-input: rgba(0, 0, 0, 0.9);
+            --color-bg-input-light: rgba(0, 0, 0, 0.8);
+            --color-bg-black-translucent: rgba(0, 0, 0, 0.7);
+            --color-bg-black-heavy: rgba(0, 0, 0, 0.95);
+
+            --color-amber-glow-1: rgba(255, 140, 0, 0.05);
+            --color-amber-glow-2: rgba(255, 140, 0, 0.1);
+            --color-amber-glow-3: rgba(255, 140, 0, 0.2);
+            --color-amber-glow-4: rgba(255, 140, 0, 0.3);
+            --color-amber-glow-5: rgba(255, 140, 0, 0.6);
+
+            --color-green-glow-1: rgba(0, 255, 136, 0.2);
+            --color-green-glow-2: rgba(0, 255, 136, 0.4);
+            --color-green-glow-3: rgba(0, 255, 136, 0.5);
+            --color-green-glow-4: rgba(0, 255, 136, 0.6);
+
+            --color-red-glow-1: rgba(255, 0, 0, 0.3);
+            --color-red-glow-2: rgba(255, 0, 0, 0.6);
+            --color-red-glow-3: rgba(255, 0, 0, 0.9);
+
+            --color-purple-glow-1: rgba(138, 43, 226, 0.5);
+            --color-purple-glow-2: rgba(138, 43, 226, 0.6);
+
+            --font-mono: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+        
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.95; }
+        }
+        
+        @keyframes glow {
+            0%, 100% { text-shadow: 0 0 10px var(--color-amber-primary), 0 0 20px var(--color-amber-primary), 0 0 30px var(--color-amber-accent); }
+            50% { text-shadow: 0 0 20px var(--color-amber-primary), 0 0 30px var(--color-amber-primary), 0 0 40px var(--color-amber-accent); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.05); }
+        }
+        
+        @keyframes recordPulse {
+            0%, 100% { box-shadow: 0 0 20px var(--color-red-glow-2); }
+            50% { box-shadow: 0 0 40px var(--color-red-glow-3); }
+        }
+        
+        @keyframes chainPulse {
+            0%, 100% { border-color: var(--color-green-accent); }
+            50% { border-color: var(--color-green-accent-hover); box-shadow: 0 0 20px var(--color-green-glow-3); }
+        }
+        
+        body {
+            font-family: var(--font-mono);
+            background: var(--color-bg-primary);
+            background-image: 
+                repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.15) 1px, transparent 1px, transparent 2px),
+                radial-gradient(ellipse at center, var(--color-bg-secondary) 0%, var(--color-bg-primary) 100%);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+            animation: flicker 0.15s infinite;
+            color: var(--color-amber-secondary);
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(to bottom, var(--color-amber-glow-3), transparent);
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(0deg, rgba(255, 140, 0, 0.03), rgba(255, 140, 0, 0.03) 2px, transparent 2px, transparent 4px);
+            pointer-events: none;
+            z-index: 9998;
+        }
+
+        /* Accessibility: Class to hide elements visually but keep them for screen readers */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+        
+        .container {
+            max-width: 1900px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header {
+            text-align: center;
+            color: var(--color-amber-primary);
+            margin-bottom: 15px;
+            border: 2px solid var(--color-amber-primary);
+            background: var(--color-amber-glow-1);
+            padding: 12px;
+            position: relative;
+            box-shadow: 
+                inset 0 0 20px var(--color-amber-glow-2),
+                0 0 30px var(--color-amber-glow-3);
+        }
+        
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 0;
+            letter-spacing: 6px;
+            animation: glow 2s ease-in-out infinite;
+            text-transform: uppercase;
+        }
+        
+        .top-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .main-interface {
+            display: grid;
+            /* Default 3-column layout for desktops */
+            grid-template-columns: 250px 1fr 350px;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .sidebar, .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .card {
+            background: var(--color-bg-card);
+            border: 2px solid var(--color-amber-primary);
+            padding: 15px;
+            box-shadow: 
+                inset 0 0 20px var(--color-amber-glow-2),
+                0 0 30px var(--color-amber-glow-4);
+            position: relative;
+        }
+        
+        .card.compact {
+            padding: 12px;
+        }
+        
+        .card h2 {
+            color: var(--color-amber-primary);
+            margin-bottom: 12px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px var(--color-amber-primary);
+        }
+        
+        .llm-router {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 8px;
+        }
+        
+        .llm-option {
+            padding: 10px;
+            border: 2px solid rgba(255, 140, 0, 0.4);
+            background: var(--color-bg-black-translucent);
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-size: 0.85em;
+            color: var(--color-amber-secondary);
+            font-family: var(--font-mono);
+            height: 45px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .llm-option:hover {
+            border-color: var(--color-amber-primary);
+            background: var(--color-amber-glow-1);
+        }
+        
+        .llm-option.active {
+            border-color: var(--color-green-accent);
+            background: var(--color-green-glow-1);
+            box-shadow: 0 0 20px var(--color-green-glow-2);
+        }
+        
+        .llm-name {
+            color: var(--color-amber-primary);
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .llm-option.active .llm-name {
+            color: var(--color-green-accent);
+        }
+        
+        /* --- Custom Select Style --- */
+        .nun-select {
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 140, 0, 0.5);
+            color: var(--color-amber-secondary);
+            font-family: var(--font-mono);
+            font-size: 0.75em;
+            padding: 8px;
+            outline: none;
+            margin-top: 4px;
+            cursor: pointer;
+        }
+        .nun-select:focus {
+            border-color: var(--color-amber-primary);
+            box-shadow: 0 0 10px var(--color-amber-glow-3);
+        }
+        .nun-select option {
+            background-color: #0a0a0a;
+            color: var(--color-amber-secondary);
+        }
+        
+        .quick-actions {
+            display: grid;
+            gap: 4px;
+        }
+        
+        .quick-btn {
+            padding: 6px;
+            border: 2px solid var(--color-amber-primary);
+            background: var(--color-bg-input-light);
+            color: var(--color-amber-primary);
+            font-family: var(--font-mono);
+            font-size: 0.7em;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .quick-btn:hover {
+            border-color: var(--color-amber-accent);
+            background: var(--color-amber-glow-3);
+            box-shadow: 0 0 15px var(--color-amber-glow-5);
+        }
+        
+        .quick-btn.active {
+            background: var(--color-amber-glow-4);
+            border-color: var(--color-amber-accent);
+        }
+        
+        .main-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .neural-input {
+            position: relative;
+        }
+        
+        #commandInput {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            border: 2px solid var(--color-amber-primary);
+            background: var(--color-bg-input);
+            color: var(--color-amber-secondary);
+            font-size: 13px;
+            font-family: var(--font-mono);
+            resize: vertical;
+            box-shadow: inset 0 0 20px var(--color-amber-glow-3);
+        }
+        
+        #commandInput:focus {
+            outline: none;
+            border-color: var(--color-amber-accent);
+            box-shadow: 
+                inset 0 0 30px var(--color-amber-glow-4),
+                0 0 30px var(--color-amber-glow-5);
+        }
+        
+        #commandInput::placeholder {
+            color: rgba(255, 170, 51, 0.4);
+        }
+        
+        .output-matrix {
+            min-height: 280px;
+            background: var(--color-bg-black-heavy);
+            border: 2px solid var(--color-amber-primary);
+            padding: 15px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            max-height: 400px;
+            box-shadow: inset 0 0 30px var(--color-amber-glow-3);
+        }
+        
+        .output-matrix::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .output-matrix::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--color-amber-primary);
+        }
+        
+        .output-matrix::-webkit-scrollbar-thumb {
+            background: var(--color-amber-primary);
+            box-shadow: inset 0 0 6px var(--color-amber-glow-5);
+        }
+
+        .chain-step-output {
+            border: 1px dashed rgba(0, 255, 136, 0.5);
+            padding: 10px;
+            margin-bottom: 10px;
+            background: rgba(0, 255, 136, 0.05);
+            position: relative;
+        }
+
+        .chain-step-title {
+            color: var(--color-green-accent);
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        
+        .control-panel {
+            display: grid; /* Changed from flex to grid */
+            grid-template-columns: repeat(3, 1fr); /* 3 Columns */
+            gap: 10px;
+            align-items: center;
+        }
+        
+        /* General Button Style */
+        button {
+            padding: 9px 16px;
+            border: 2px solid var(--color-amber-primary);
+            background: var(--color-bg-input-light);
+            font-size: 0.75em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--color-amber-primary);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Control Panel Button Override for Width */
+        .control-panel button {
+            padding: 12px 0; /* Vertical padding only, width handled by grid */
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            white-space: nowrap;
+        }
+        
+        button:hover {
+            border-color: var(--color-amber-accent);
+            box-shadow: 0 0 20px var(--color-amber-glow-5);
+            transform: translateY(-2px);
+            color: var(--color-amber-secondary);
+        }
+        
+        .btn-execute {
+            border-color: var(--color-amber-accent);
+            color: var(--color-amber-accent);
+        }
+        
+        .btn-execute:hover {
+            box-shadow: 0 0 30px rgba(255, 69, 0, 0.8);
+        }
+        
+        .btn-copy {
+            border-color: var(--color-green-accent);
+            color: var(--color-green-accent);
+        }
+        
+        .btn-copy:hover {
+            border-color: var(--color-green-accent-hover);
+            box-shadow: 0 0 20px var(--color-green-glow-4);
+        }
+        
+        .btn-chain {
+            border-color: var(--color-green-accent);
+            color: var(--color-green-accent);
+        }
+        
+        .btn-chain.active {
+            background: var(--color-green-glow-1);
+            animation: chainPulse 2s infinite;
+        }
+        
+        .btn-github {
+            border-color: var(--color-purple-accent);
+            color: var(--color-purple-accent);
+        }
+        
+        .btn-github:hover {
+            box-shadow: 0 0 20px var(--color-purple-glow-2);
+        }
+
+        /* Class for the top-bar template/export buttons */
+        .btn-grid-container {
+            display: flex;
+            gap: 6px;
+        }
+        .btn-grid-item {
+            flex: 1;
+            font-size: 0.65em;
+            padding: 8px;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--color-bg-black-heavy);
+            border: 2px solid var(--color-green-accent);
+            color: var(--color-green-accent);
+            padding: 15px 25px;
+            box-shadow: 0 0 30px var(--color-green-glow-4);
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s;
+            z-index: 10000;
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.8em;
+        }
+        
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .notification.error {
+            border-color: var(--color-amber-accent);
+            color: var(--color-amber-accent);
+            box-shadow: 0 0 30px rgba(255, 69, 0, 0.6);
+        }
+        
+        .mode-indicator {
+            padding: 6px 12px;
+            border: 2px solid var(--color-amber-primary);
+            background: var(--color-bg-input);
+            color: var(--color-amber-primary);
+            font-size: 0.7em;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: inset 0 0 10px var(--color-amber-glow-3);
+        }
+        
+        .stats-display {
+            /* Make stats span full width below grid */
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            font-size: 0.7em;
+            color: var(--color-amber-secondary);
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+        
+        .analytics-panel {
+            padding: 12px;
+            background: var(--color-bg-input-light);
+            border: 2px solid var(--color-purple-glow-1);
+            font-size: 0.75em;
+        }
+        
+        .analytics-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--color-amber-glow-3);
+            color: var(--color-amber-secondary);
+        }
+        
+        .analytics-stat:last-child {
+            border-bottom: none;
+        }
+        
+        .analytics-label {
+            color: var(--color-purple-accent);
+        }
+        
+        .chain-mode-indicator {
+            padding: 10px;
+            border: 2px solid var(--color-green-accent);
+            background: var(--color-green-glow-1);
+            color: var(--color-green-accent);
+            font-size: 0.75em;
+            text-align: center;
+            margin-bottom: 10px;
+            display: none;
+        }
+        
+        .chain-mode-indicator.active {
+            display: block;
+            animation: chainPulse 2s infinite;
+        }
+        
+        .export-btn {
+            width: 100%;
+            margin-top: 8px;
+            font-size: 0.7em;
+        }
+
+        /* Re-usable class for config inputs */
+        .config-input {
+            width: 100%;
+            padding: 6px;
+            background: var(--color-bg-input-light);
+            border: 1px solid var(--color-purple-accent);
+            color: var(--color-amber-secondary);
+            font-family: var(--font-mono);
+            font-size: 0.7em;
+            margin-bottom: 6px;
+        }
+
+        /* NEW STATUS INDICATOR STYLES */
+        #backendStatus {
+            font-size: 0.8em;
+            color: var(--color-red-error);
+            letter-spacing: 2px;
+            text-shadow: 0 0 5px var(--color-red-error);
+            animation: pulse 1s infinite;
+        }
+        
+        #backendStatus.online {
+            color: var(--color-green-accent);
+            text-shadow: 0 0 5px var(--color-green-accent);
+        }
+
+        /* --- RESPONSIVENESS --- */
+        
+        /* Tablet: 2-column layout */
+        @media (max-width: 1280px) {
+            .main-interface {
+                grid-template-columns: 220px 1fr;
+            }
+            .right-panel {
+                /* Span both columns and move to the bottom */
+                grid-column: 1 / -1;
+                /* Change to grid to lay out cards horizontally */
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            }
+        }
+        
+        /* Mobile: 1-column layout */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .main-interface {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar, .right-panel {
+                /* Stack cards in a grid */
+                display: grid;
+                grid-template-columns: 1fr; /* Force 1 column stack */
+                width: 100%;
+            }
+            
+            /* On small screens, let sidebar/right-panel cards flow */
+            @media (max-width: 500px) {
+                .sidebar, .right-panel {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            .control-panel {
+                /* Make buttons stack nicely on mobile */
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .stats-display {
+                grid-column: 1 / -1;
+                justify-content: space-around;
+                padding-top: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="notification" id="notification" role="status" aria-live="polite">▣ SYSTEM RESPONSE ▣</div>
+    
+    <div class="container">
+        <header class="header" role="banner">
+            <h1>⬡ NEURAL UTILITY NEXUS ⬡</h1>
+            <div id="backendStatus" class="mt-1">🔴 BACKEND OFFLINE</div> <!-- New Status Indicator -->
+        </header>
+        
+        <div class="top-bar">
+            <div class="card compact" role="region" aria-label="LLM Routing">
+                <h2>▸ LLM ROUTING</h2>
+                <div class="llm-router">
+                    <button type="button" class="llm-option active" data-llm="claude">
+                        <div class="llm-name">CLAUDE</div>
+                    </button>
+                    <button type="button" class="llm-option" data-llm="gemini">
+                        <div class="llm-name">GEMINI</div>
+                    </button>
+                    <button type="button" class="llm-option" data-llm="auto">
+                        <div class="llm-name">AUTO</div>
+                    </button>
+                    <button type="button" class="llm-option" data-llm="gpt4">
+                        <div class="llm-name">GPT-4</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ROUTING PREFERENCES -->
+            <div class="card compact" role="region" aria-label="Routing Preferences">
+                <h2>▸ ROUTER PREFS (AUTO MODE)</h2>
+                <div class="quick-actions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                    <button type="button" class="quick-btn active" id="prefLowCost">⬢ LOW COST</button>
+                    <button type="button" class="quick-btn" id="prefLowLatency">⬡ LOW LATENCY</button>
+                </div>
+            </div>
+            
+            <div class="card compact" role="region" aria-label="Session Templates">
+                <h2>▸ SESSION TEMPLATES</h2>
+                <div class="btn-grid-container">
+                    <button type="button" id="templateMorning" class="btn-grid-item">MORNING</button>
+                    <button type="button" id="templateDeepWork" class="btn-grid-item">DEEP WORK</button>
+                    <button type="button" id="templateLearning" class="btn-grid-item">LEARNING</button>
+                    <button type="button" id="templateDebug" class="btn-grid-item">DEBUG</button>
+                </div>
+            </div>
+            
+            <div class="card compact" role="region" aria-label="Export">
+                <h2>▸ EXPORT</h2>
+                <div class="btn-grid-container">
+                    <button type="button" id="exportObsidian" class="btn-grid-item">OBSIDIAN</button>
+                    <button type="button" id="exportMarkdown" class="btn-grid-item">MARKDOWN</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-interface">
+            <aside class="sidebar" role="complementary" aria-label="Context and Modifiers">
+                
+                <!-- Chain Selector (DROPDOWN) -->
+                <div class="card" role="region" aria-label="Workflows">
+                    <h2>▸ WORKFLOW CHAIN</h2>
+                    <select id="chainSelector" class="nun-select">
+                        <!-- Chain options populated by JS -->
+                    </select>
+                </div>
+
+                <!-- CONTEXT (DROPDOWN) -->
+                <div class="card" role="region" aria-label="Context">
+                    <h2>▸ CONTEXT</h2>
+                    <select id="contextSelector" class="nun-select">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+                
+                <!-- MODIFIERS (DROPDOWN) -->
+                <div class="card" role="region" aria-label="Modifiers">
+                    <h2>▸ MODIFIERS</h2>
+                    <select id="modifierSelector" class="nun-select">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+
+                <!-- NEW AUTOMATION CARD (Moved here) -->
+                <div class="card" role="region" aria-label="Automation">
+                    <h2>▸ AUTOMATION & TRIGGERS</h2>
+                    <div class="context-detector">
+                        <div class="text-xs text-amber-600 mb-2">ACTIVE RULES:</div>
+                        <ul id="automationRulesList" class="text-[10px] text-amber-700 mb-3 pl-2 list-disc">
+                            <li>Loading rules...</li>
+                        </ul>
+                        <button id="testTriggerBtn" class="quick-btn" style="width: 100%">⚡ TEST: SYSTEM STARTUP</button>
+                    </div>
+                </div>
+            </aside>
+            
+            <main class="main-panel" role="main">
+                <div class="chain-mode-indicator" id="chainIndicator" role="status">
+                    ⬢ CHAIN MODE ACTIVE • OUTPUT WILL AUTO-FEED AS NEXT INPUT ⬢
+                </div>
+                
+                <div class="card neural-input" role="region" aria-label="Neural Input">
+                    <h2>▸ NEURAL INPUT</h2>
+                    <label for="commandInput" class="sr-only">Type or speak your command</label>
+                    <textarea id="commandInput" placeholder="▸ TYPE OR SPEAK..."></textarea>
+                </div>
+                
+                <div class="card" role="region" aria-label="Output">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+                        <h2>▸ OUTPUT</h2>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <div class="mode-indicator" id="llmIndicator" aria-live="polite">◈ CLAUDE</div>
+                            <div class="mode-indicator" id="modeIndicator" aria-live="polite">◈ READY</div>
+                        </div>
+                    </div>
+                    <div class="output-matrix" id="outputMatrix">▸ AWAITING INPUT...</div>
+                </div>
+                
+                <div class="card" role="region" aria-label="Control Panel">
+                    <div class="control-panel">
+                        <button type="button" class="btn-execute" id="executeBtn">⬢ EXECUTE</button>
+                        <button type="button" class="btn-copy" id="copyBtn">⬡ COPY</button>
+                        <button type="button" class="btn-chain" id="chainBtn">◇ CHAIN</button>
+                        <button type="button" class="btn-github" id="githubBtn">◈ GITHUB</button>
+                        <button type="button" id="clearBtn">▸ RESET</button>
+                        <button type="button" id="saveBtn">◇ SAVE</button>
+                        <div class="stats-display" id="stats">
+                            <span>TOKEN: <span id="tokenCount">0</span></span>
+                            <span>CTX: <span id="contextType">-</span></span>
+                            <span>MODS: <span id="modCount">0</span></span>
+                            <span>WORKFLOW: <span id="workflowName">-</span></span> <!-- New stat -->
+                        </div>
+                    </div>
+                </div>
+            </main>
+            
+            <aside class="right-panel" role="complementary" aria-label="Analytics and History">
+                <div class="card" role="region" aria-label="Analytics">
+                    <h2>▸ ANALYTICS</h2>
+                    <div class="analytics-panel" id="analyticsPanel">
+                        <div class="analytics-stat">
+                            <span class="analytics-label">Total Sessions:</span>
+                            <span id="totalSessions">0</span>
+                        </div>
+                        <div class="analytics-stat">
+                            <span class="analytics-label">Most Used Context:</span>
+                            <span id="topContext">-</span>
+                        </div>
+                        <div class="analytics-stat">
+                            <span class="analytics-label">Most Used LLM:</span>
+                            <span id="topLLM">-</span>
+                        </div>
+                        <div class="analytics-stat">
+                            <span class="analytics-label">Avg Tokens/Session:</span>
+                            <span id="avgTokens">0</span>
+                        </div>
+                        <div class="analytics-stat">
+                            <span class="analytics-label">Chain Executions:</span>
+                            <span id="chainCount">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card" role="region" aria-label="History">
+                    <h2>▸ HISTORY</h2>
+                    <div id="historyContainer" style="max-height: 180px; overflow-y: auto; font-size: 0.7em;">
+                        <div style="color: rgba(255, 170, 51, 0.5); text-align: center; padding: 15px;">
+                            NO HISTORY
+                        </div>
+                    </div>
+                    <button type="button" class="export-btn" id="exportHistoryBtn">EXPORT HISTORY</button>
+                </div>
+                
+                <div class="card" role="region" aria-label="GitHub Configuration">
+                    <h2>▸ GITHUB CONFIG</h2>
+                    <label for="githubRepo" class="sr-only">GitHub Repo (user/repo)</label>
+                    <input type="text" id="githubRepo" class="config-input" placeholder="user/repo" value="your-user/nun-sessions" />
+                    <label for="githubToken" class="sr-only">GitHub Personal Access Token</label>
+                    <input type="password" id="githubToken" class="config-input" placeholder="GitHub PAT (repo scope)" />
+                    
+                    <button type="button" id="testGitHubBtn" style="width: 100%; font-size: 0.7em;">TEST</button>
+                    <div id="githubStatus" style="color: var(--color-purple-accent); font-size: 0.65em; margin-top: 6px; opacity: 0.8;">Ready</div>
+                </div>
+            </aside>
+        </div>
+    </div>
+    
+    <script type="module" src="./src/app.js"></script>
+</body>
+</html>

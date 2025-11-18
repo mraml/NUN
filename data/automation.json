@@ -1,0 +1,8 @@
+[
+  {
+    "id": "rule_1",
+    "trigger": "system.startup",
+    "action": "chain:compliance.pii_check",
+    "input": "System Startup Check"
+  }
+]

@@ -1,65 +1,92 @@
 // /engine/router.js
+import { readAnalytics } from './analyticsCore.js'; // Import analytics to inform routing decisions
+
 /**
  * routerSelect
  * - payload: { input, context, llmHint, modelCatalog, routingConfig }
  *
- * modelCatalog sample:
- * {
- *   "claude": { strengths: ["reasoning"], latency: 1200, cost: 0.6 },
- *   "gemini": { strengths: ["code"], latency: 400, cost: 0.35 }
- * }
+ * Implements Phase 4: Scoring based on keywords, context, complexity, and historical performance.
  *
- * routingConfig:
- *  - preferLowLatency: boolean
- *  - preferLowCost: boolean
- *
- * Returns: selected model key string
+ * @returns: selected model key string
  */
 
-export function routerSelect({ input = '', context = null, llmHint = 'auto', modelCatalog = {}, routingConfig = {} } = {}) {
+function analyzeComplexity(input) {
+  const tokenCount = input.split(/\s+/).filter(Boolean).length;
+  // Simple scoring: High complexity if over 300 tokens (indicates deep work or large content)
+  const complexityScore = tokenCount > 300 ? 5 : (tokenCount > 100 ? 3 : 1);
+  return { tokenCount, complexityScore };
+}
+
+export function routerSelect({ input = '', context = null, llmHint = 'auto', modelCatalog = {}, routingConfig = { preferLowLatency: false, preferLowCost: true } } = {}) {
   if (!input) {
-    // fallback to default model
     const fallback = Object.keys(modelCatalog)[0] || 'claude';
     return fallback;
   }
 
-  // if user explicitly picks
   if (llmHint && llmHint !== 'auto') return llmHint;
 
   const lower = input.toLowerCase();
-  // Basic keyword mapping (can be extended or moved to config)
+  const complexity = analyzeComplexity(input);
+  const scores = {};
+  
+  // Get historical performance data
+  const analytics = readAnalytics();
+
+  // Basic keyword mapping (same as before)
   const keywordMap = {
     code: ['code', 'debug', 'function', 'api', 'sql', 'npm', 'js', 'javascript', 'python'],
     reasoning: ['why', 'analyze', 'evaluate', 'decide', 'trade-offs', 'compare'],
     creative: ['write', 'story', 'poem', 'compose', 'creative', 'imagine']
   };
 
-  // score models
-  const scores = {};
   for (const [modelKey, meta] of Object.entries(modelCatalog || {})) {
     let s = 0;
     const strengths = meta.strengths || [];
 
-    // keyword matching
+    // 1. KEYWORD & STRENGTH MATCHING (Base Score)
     for (const [type, kws] of Object.entries(keywordMap)) {
       for (const kw of kws) {
         if (lower.includes(kw)) {
-          // if model strengths match type, reward
-          if (strengths.includes(type)) s += 2;
-          else s += 1;
+          if (strengths.includes(type)) s += 2; // Strong match
+          else s += 1; // Weak match
         }
       }
     }
+    
+    // 2. CONTEXTUAL BOOST (Bias based on active context)
+    if (context && strengths.includes(context.split('-')[0])) { // e.g., 'deep-work' matches 'deep' or 'work'
+        s += 3; // Direct context strength match
+    }
+    
+    // 3. COMPLEXITY SCORING (Prefer powerful models for complexity)
+    // Assume high-cost models (like GPT-4, or the most costly in the catalog) are better for complexity
+    const isHighCostModel = meta.cost > 0.7; 
+    if (isHighCostModel) {
+        s += complexity.complexityScore * 1.5;
+    }
+    
+    // 4. HISTORICAL ANALYTICS BIAS (Adaptiveness)
+    const usageCount = analytics.llms?.[modelKey] || 0;
+    const totalSessions = analytics.sessions || 1;
+    const historicalPreference = usageCount / totalSessions; // Higher usage gives a slight passive boost
+    s += historicalPreference * 5; // Scale to be relevant but not dominant
 
-    // prefer low-latency or low-cost if requested
-    if (routingConfig.preferLowLatency && meta.latency) s += Math.max(0, 1 - meta.latency / 2000);
-    if (routingConfig.preferLowCost && meta.cost) s += Math.max(0, 1 - meta.cost);
+    // 5. USER PREFERENCE OVERRIDES (Latency/Cost)
+    if (routingConfig.preferLowLatency && meta.latency) {
+        // Models with lower latency get a higher score (max score is 1.0 if latency is 0)
+        s += Math.max(0, 1 - meta.latency / 2000) * 4;
+    }
+    if (routingConfig.preferLowCost && meta.cost) {
+        // Models with lower cost get a higher score (max score is 1.0 if cost is 0)
+        s += Math.max(0, 1 - meta.cost) * 4;
+    }
 
     scores[modelKey] = s;
   }
 
-  // choose model with highest score
+  // Choose model with highest score
   const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
   if (!best) return Object.keys(modelCatalog)[0] || 'claude';
+  
   return best[0];
 }
