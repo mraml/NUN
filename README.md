@@ -1,3 +1,5 @@
+<img width="1637" height="1028" alt="Screenshot 2025-11-18 at 8 31 26 PM" src="https://github.com/user-attachments/assets/db5fe321-fd45-4d3b-8ed8-327df7c27df0" />
+
 ---
 
 🧠 N.U.N. — Neural Utility Nexus
@@ -500,7 +502,7 @@ MIT License.
 N.U.N. is more than a prompt tool — it's a personal cognitive OS.
 With a robust engine, modular architecture, multi-model routing, and workflow automation, it becomes a force multiplier for any developer, creator, or knowledge worker.
 
-<img width="1637" height="1028" alt="Screenshot 2025-11-18 at 8 31 26 PM" src="https://github.com/user-attachments/assets/db5fe321-fd45-4d3b-8ed8-327df7c27df0" />
+
 
 
 
